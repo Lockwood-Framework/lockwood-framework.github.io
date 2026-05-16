@@ -95,10 +95,11 @@ Config.StateIdPrefix = 'LW' -- 2-4 uppercase letters, your choice
 Add the following to your `server.cfg` before any `ensure` statements:
 
 ```
-add_principal group.lw.mod        group.lw.user
-add_principal group.lw.admin      group.lw.mod
-add_principal group.lw.dev        group.lw.admin
-add_principal group.lw.superadmin group.lw.dev
+add_principal group.lw-user       builtin.everyone
+add_principal group.lw-mod        group.lw-user
+add_principal group.lw-admin      group.lw-mod
+add_principal group.lw-dev        group.lw-admin
+add_principal group.lw-superadmin group.lw-dev
 
 add_ace resource.lw-core command.add_ace          allow
 add_ace resource.lw-core command.remove_ace       allow
