@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 680" role="img">
+  <title>Lockwood Framework</title>
+  <desc>A shield-shaped badge in dark brown and deep crimson with an LW monogram</desc>
+
+  <defs>
+    <style>
+      .shield-border-outer { fill: #7a0000; }
+      .shield-border-inner { fill: #c8a96e; }
+      .shield-body { fill: #1a0f0a; }
+      .shield-panel { fill: #2a1608; }
+      .rivet { fill: #c8a96e; }
+      .lw-text { fill: #c8a96e; font-family: Georgia, serif; font-weight: 700; }
+      .sub-text { fill: #7a0000; font-family: Georgia, serif; font-weight: 700; }
+      .diamond { fill: #7a0000; }
+      .horn-stroke { fill: none; stroke: #7a0000; stroke-width: 3.5; stroke-linecap: round; }
+      .banner-bg { fill: #7a0000; }
+      .banner-text { fill: #c8a96e; font-family: Georgia, serif; font-weight: 700; }
+    </style>
+  </defs>
+
+  <path class="shield-border-outer" d="M340 60 L560 140 L580 380 L340 620 L100 380 L120 140 Z"/>
+  <rect class="shield-border-outer" x="290" y="50" width="100" height="28" rx="4"/>
+  <polygon class="shield-border-outer" points="320,620 340,648 360,620"/>
+  <path class="shield-border-inner" d="M340 76 L548 152 L566 376 L340 600 L114 376 L132 152 Z"/>
+  <path class="shield-body" d="M340 92 L536 164 L552 372 L340 584 L128 372 L144 164 Z"/>
+  <path class="shield-panel" d="M340 110 L516 176 L530 368 L340 560 L150 368 L164 176 Z"/>
+
+  <circle class="rivet" cx="340" cy="98" r="7"/>
+  <circle class="rivet" cx="524" cy="170" r="7"/>
+  <circle class="rivet" cx="536" cy="366" r="7"/>
+  <circle class="rivet" cx="340" cy="572" r="7"/>
+  <circle class="rivet" cx="144" cy="366" r="7"/>
+  <circle class="rivet" cx="156" cy="170" r="7"/>
+
+  <rect class="shield-border-inner" x="190" y="214" width="300" height="2.5" rx="1"/>
+  <rect class="shield-border-inner" x="190" y="430" width="300" height="2.5" rx="1"/>
+
+  <text class="lw-text" x="340" y="322" font-size="190" text-anchor="middle" dominant-baseline="middle" letter-spacing="-8">LW</text>
+  <text class="sub-text" x="340" y="462" font-size="24" text-anchor="middle" letter-spacing="8">FRAMEWORK</text>
+
+  <polygon class="diamond" points="178,457 185,464 178,471 171,464"/>
+  <polygon class="diamond" points="502,457 509,464 502,471 495,464"/>
+
+  <path class="horn-stroke" d="M260,520 Q220,500 200,530 Q185,558 212,566"/>
+  <path class="horn-stroke" d="M420,520 Q460,500 480,530 Q495,558 468,566"/>
+  <circle class="rivet" cx="340" cy="540" r="5"/>
+
+  <rect class="banner-bg" x="226" y="136" width="228" height="38" rx="3"/>
+  <text class="banner-text" x="340" y="162" font-size="18" text-anchor="middle" letter-spacing="5">LOCKWOOD</text>
+
+</svg>

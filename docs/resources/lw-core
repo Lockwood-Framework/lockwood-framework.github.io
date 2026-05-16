@@ -1,0 +1,204 @@
+# lw-core
+
+**Phase:** Core  
+**Dependencies:** lw-db, lw-shared  
+**Dependency of:** every resource above Foundation
+
+Player session management, lifecycle events, character loading, server-side cache, and routing bucket management. lw-core is an API and data layer — it owns the session lifecycle and exposes primitives. It does not know about characters, organizations, money, inventory, or any gameplay concept.
+
+## Database
+
+Creates one table: `lw_players` (`license2`, `name`, `group`, `created_at`, `last_seen`).
+
+State IDs live in `lw_characters`, owned by `lw-characters-api`. On restart, lw-core detects prefix changes and migrates existing state IDs automatically via a cascading transaction.
+
+## Session object
+
+The in-memory session object available via exports:
+
+```lua
+{
+    source   = integer,  -- current FiveM source ID
+    license2 = string,   -- bare identifier, immutable for session lifetime
+    name     = string,   -- GetPlayerName, updated on connect if changed
+    group    = string,   -- server ACE group
+    stateId  = string?,  -- active character state ID, nil until set
+    bucket   = any?,     -- current routing bucket key, nil if default world
+}
+```
+
+## State IDs
+
+The canonical cross-resource character identifier. Format: `CONFIG_PREFIX` (2–4 uppercase chars) + 13 random uppercase alphanumeric chars.
+
+To generate a state ID at the end of character creation:
+
+```lua
+-- Must be inside a Citizen.CreateThread
+local stateId = exports['lw-core']:RequestStateId()
+-- Insert stateId into lw_characters via lw-characters-api, then call SetActiveCharacter
+```
+
+lw-core generates and validates uniqueness. `lw-characters-api` owns the insert.
+
+## ACE setup
+
+Add to `server.cfg` before any `ensure` statements:
+
+```
+add_principal group.lw.mod        group.lw.user
+add_principal group.lw.admin      group.lw.mod
+add_principal group.lw.dev        group.lw.admin
+add_principal group.lw.superadmin group.lw.dev
+
+add_ace resource.lw-core command.add_ace          allow
+add_ace resource.lw-core command.remove_ace       allow
+add_ace resource.lw-core command.add_principal    allow
+add_ace resource.lw-core command.remove_principal allow
+```
+
+## Config
+
+| Key | Type | Description |
+|---|---|---|
+| `StateIdPrefix` | string | 2–4 uppercase letters prepended to every state ID. Set before first boot — cannot be changed after characters exist |
+| `StateIdCharset` | string | Characters used for the random portion |
+| `StateIdRandomLength` | number | Length of random portion (default 13) |
+| `DefaultGroup` | string | ACE group for players not in `PlayerGroups` |
+| `Groups` | table | All valid server groups |
+| `PlayerGroups` | table | Maps `license2:xxxx` to a specific group |
+| `SaveInterval` | number | Minutes between `last_seen` heartbeats |
+| `PermissionTimeout` | number | Ms before permission collection falls back |
+
+---
+
+## Server exports
+
+### Session reads
+
+```lua
+exports['lw-core']:GetPlayer(source)              -- session table or nil
+exports['lw-core']:GetPlayerByLicense2(license2)  -- session table or nil
+exports['lw-core']:GetAllPlayers()                -- all active sessions keyed by source
+exports['lw-core']:GetPlayerCount()               -- integer
+exports['lw-core']:GetOfflinePlayer(license2)     -- lw_players row or nil (sync, requires thread)
+```
+
+### Session writes
+
+```lua
+exports['lw-core']:SetActiveCharacter(source, stateId)  -- returns boolean
+exports['lw-core']:ClearActiveCharacter(source)         -- returns boolean
+exports['lw-core']:Logout(source)                       -- clears character, returns to selection
+```
+
+### State IDs
+
+```lua
+exports['lw-core']:RequestStateId()  -- sync, requires Citizen.CreateThread
+```
+
+### Routing buckets
+
+```lua
+exports['lw-core']:RegisterBucket(key, owner)    -- returns bucketId or nil
+exports['lw-core']:DeregisterBucket(key, owner)  -- evicts players to bucket 0, returns boolean
+exports['lw-core']:AssignPlayer(source, key)     -- returns boolean
+exports['lw-core']:RemovePlayer(source)          -- returns player to bucket 0, returns boolean
+```
+
+### Permissions
+
+```lua
+-- Register on resource start
+exports['lw-core']:RegisterPermissions(resourceName, perms)
+
+-- Register if this resource contributes roles on character selection
+exports['lw-core']:RegisterPermissionContributor(resourceName)
+
+-- Called after lw-core:characterSelected fires
+exports['lw-core']:GrantRoles(source, roles)
+exports['lw-core']:DoneContributing(source, resourceName)
+
+exports['lw-core']:HasAcePermission(source, permission)  -- boolean
+exports['lw-core']:IsPlayerAdmin(source)                 -- boolean
+```
+
+### Identifiers
+
+```lua
+exports['lw-core']:GetIdentifier(source, type)   -- bare string or nil
+exports['lw-core']:GetAllIdentifiers(source)     -- table of all identifiers
+-- Valid types: 'license', 'license2', 'steam', 'discord', 'ip'
+```
+
+### Callbacks
+
+```lua
+-- Server: register a named handler
+exports['lw-core']:RegisterCallback('myresource:name', function(source, resolve, ...)
+    resolve(returnValue)
+end)
+```
+
+## Client exports
+
+```lua
+exports['lw-core']:TriggerServerCallback(name, cb, ...)  -- fires cb with server response
+exports['lw-core']:GetSessionData()                      -- { license2, name, group } or nil
+```
+
+---
+
+## Server events
+
+| Event | Args | When |
+|---|---|---|
+| `lw-core:ready` | — | Boot complete, DB live, migrations run |
+| `lw-core:playerConnected` | `source, session` | Session created, no character yet |
+| `lw-core:characterSelected` | `source, stateId` | Character attached to session |
+| `lw-core:characterUnloaded` | `source, prevStateId` | Character detached |
+| `lw-core:playerLogout` | `source` | Player returned to character selection |
+| `lw-core:playerDropped` | `source, session, reason` | Player disconnected — session still readable during handlers |
+| `lw-core:permissionsApplied` | `source, reason` | All contributors done (`'complete'`, `'timeout'`, `'immediate'`) |
+
+## Client events
+
+| Event | Args | When |
+|---|---|---|
+| `lw-core:sessionReady` | `sessionData` | Server confirmed session is live |
+| `lw-core:enterCharacterSelection` | — | Server triggered logout |
+
+---
+
+## Event order on disconnect
+
+1. `lw-core:characterUnloaded` — save character data here
+2. `lw-core:playerDropped` — session still readable
+3. Session destroyed
+
+## Event order on logout
+
+1. `lw-core:characterUnloaded` — save character data here
+2. `lw-core:playerLogout` — logout-specific cleanup
+3. Player reassigned to private routing bucket
+4. Client receives `lw-core:enterCharacterSelection`
+
+---
+
+## Permission contributor pattern
+
+Resources that contribute character-level ACE permissions must:
+
+1. Call `RegisterPermissions` on start
+2. Call `RegisterPermissionContributor` on start
+3. Listen to `lw-core:characterSelected`
+4. Resolve the character's roles from their own data
+5. Call `GrantRoles(source, roles)`
+6. Call `DoneContributing(source, GetCurrentResourceName())`
+
+Permissions are applied atomically once all contributors call done or the timeout fires. Never apply ACE directly — always go through this API.
+
+---
+
+> Licensed under the [Rangeland Public License v1.0](../license) — use it, modify it, don't sell it, don't ship it.
